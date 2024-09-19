@@ -2,8 +2,8 @@
 <html>
 <head>
   <title>Search for Address Number 508</title>
-  <!-- 引入 Google Maps API 并插入 API 密钥 -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2tvVGkebMUiea22jYfvzuNSWYwldVC8E&libraries=drawing,places"></script>
+  <!-- 引入 Google Maps API 并指定 API 密钥、绘图库和地点服务库 -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2tvVGkebMUiea22jYfvzuNSWYwldVC8E&libraries=drawing,places,geometry"></script>
   <script>
     let map;
     let drawingManager;
@@ -35,69 +35,72 @@
       // 当用户绘制多边形时，执行搜索功能
       google.maps.event.addListener(drawingManager, 'overlaycomplete', function(event) {
         if (selectedShape) {
-          selectedShape.setMap(null);
+          selectedShape.setMap(null); // 移除之前绘制的多边形
         }
         selectedShape = event.overlay;
+        
+        // 输出多边形的所有边界点
+        console.log("多边形边界坐标：", selectedShape.getPath().getArray());
+        
         searchForAddresses(selectedShape); // 执行搜索
       });
     }
 
+    // 搜索指定多边形区域内的地址
     function searchForAddresses(polygon) {
-    const geocoder = new google.maps.Geocoder();
-    
-    // 获取多边形的边界
-    const bounds = new google.maps.LatLngBounds();
-    polygon.getPath().forEach(function(latLng) {
+      const geocoder = new google.maps.Geocoder();
+      
+      // 获取多边形的边界
+      const bounds = new google.maps.LatLngBounds();
+      polygon.getPath().forEach(function(latLng) {
         bounds.extend(latLng); // 将所有边界点加入边界中
-    });
-    
-    // 从边界中获取中心点
-    const center = bounds.getCenter();
+      });
+      
+      // 从边界中获取中心点
+      const center = bounds.getCenter();
 
-    // 设置搜索半径，这里以2公里为例
-    const searchRadius = 2000;
-    
-    // 定义搜索请求，使用Geocoding API来反向编码
-    const request = {
-        location: center,
-        radius: searchRadius
-    };
-    
-    // 使用 PlacesService 来搜索附近的地址
-    const service = new google.maps.places.PlacesService(map);
+      // 设置搜索半径（这里以20公里为例）
+      const searchRadius = 20000;
 
-    service.textSearch({
+      // 使用 PlacesService 来搜索附近的地址
+      const service = new google.maps.places.PlacesService(map);
+
+      service.textSearch({
         query: '508', // 搜索关键字，查找包含门牌号“508”的地址
         location: center,
         radius: searchRadius // 搜索的范围
-    }, function(results, status) {
+      }, function(results, status) {
         if (status === google.maps.places.PlacesServiceStatus.OK) {
-            results.forEach(function(result) {
-                // 获取地址的坐标
-                const placeLocation = result.geometry.location;
+          // 输出所有搜索结果
+          console.log("搜索结果：", results);
 
-                // 检查地址是否在多边形范围内
-                if (google.maps.geometry.poly.containsLocation(placeLocation, polygon)) {
-                    // 地址在多边形内且包含508，输出地址并在地图上标记
-                    console.log("符合条件的地址: " + result.formatted_address);
-                    new google.maps.Marker({
-                        map: map,
-                        position: placeLocation,
-                        title: result.formatted_address,
-                    });
-                }
-            });
+          results.forEach(function(result) {
+            // 获取地址的坐标
+            const placeLocation = result.geometry.location;
+
+            // 检查地址是否在多边形范围内
+            if (google.maps.geometry.poly.containsLocation(placeLocation, polygon)) {
+              // 地址在多边形内且包含508，输出地址并在地图上标记
+              console.log("符合条件的地址: " + result.formatted_address);
+              new google.maps.Marker({
+                map: map,
+                position: placeLocation,
+                title: result.formatted_address,
+              });
+            }
+          });
         } else {
-            console.error("搜索失败，状态: " + status);
+          console.error("搜索失败，状态: " + status);
         }
-    });
-  }
+      });
+    }
   </script>
 </head>
 <body>
   <!-- 地图容器 -->
-  <div id="map" style="height: 800px; width: 100%;"></div>
+  <div id="map" style="height: 500px; width: 100%;"></div>
   <script>
+    // 初始化地图
     window.onload = initMap;
   </script>
 </body>
