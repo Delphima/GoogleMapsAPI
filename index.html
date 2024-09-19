@@ -1,55 +1,15 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Search for Address Number 508</title>
-  <!-- 引入 Google Maps API 并指定 API 密钥、地点服务库 -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2tvVGkebMUiea22jYfvzuNSWYwldVC8E&libraries=places,geometry"></script>
-  <script>
-    function initMap() {
-      // 初始化地图，定位到指定的经纬度 40.008917, -75.248478
-      const center = { lat: 40.008917, lng: -75.248478 }; // Philadelphia coordinates
-      const map = new google.maps.Map(document.getElementById("map"), {
-        center: center,
-        zoom: 12,
-      });
-
-      // 搜索指定范围内包含 "508" 的地址
-      searchForAddresses(map, center, 1000); // 半径设为1公里（1000米）
-    }
-
-    function searchForAddresses(map, center, radius) {
-      const service = new google.maps.places.PlacesService(map);
-
-      // 使用 Places API 搜索
-      service.textSearch({
-        query: '508', // 搜索关键字
-        location: center,
-        radius: radius // 搜索半径，单位为米
-      }, function(results, status) {
-        if (status === google.maps.places.PlacesServiceStatus.OK) {
-          console.log("搜索结果：", results); // 输出所有搜索结果
-
-          results.forEach(function(result) {
-            // 在地图上标记每个符合条件的地址
-            new google.maps.Marker({
-              map: map,
-              position: result.geometry.location,
-              title: result.formatted_address,
-            });
-          });
-        } else {
-          console.error("搜索失败，状态: " + status);
-        }
-      });
-    }
-  </script>
-</head>
-<body>
-  <!-- 地图容器 -->
-  <div id="map" style="height: 750px; width: 100%;"></div>
-  <script>
-    // 初始化地图
-    window.onload = initMap;
-  </script>
-</body>
+  <head>
+    <title>Simple Marker</title>
+    <!-- The callback parameter is required, so we use console.debug as a noop -->
+    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2tvVGkebMUiea22jYfvzuNSWYwldVC8E&callback=console.debug&libraries=maps,marker&v=beta">
+    </script>
+    <link rel="stylesheet" href="./style.css"/>
+  </head>
+  <body>
+    <gmp-map center="40.01311492919922,-75.2393798828125" zoom="14" map-id="DEMO_MAP_ID">
+      <gmp-advanced-marker position="40.01311492919922,-75.2393798828125" title="My location"></gmp-advanced-marker>
+    </gmp-map>
+  </body>
 </html>
