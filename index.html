@@ -2,92 +2,40 @@
 <html>
 <head>
   <title>Search for Address Number 508</title>
-  <!-- 引入 Google Maps API 并指定 API 密钥、绘图库和地点服务库 -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2tvVGkebMUiea22jYfvzuNSWYwldVC8E&libraries=drawing,places,geometry"></script>
+  <!-- 引入 Google Maps API 并指定 API 密钥、地点服务库 -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2tvVGkebMUiea22jYfvzuNSWYwldVC8E&libraries=places,geometry"></script>
   <script>
-    let map;
-    let drawingManager;
-    let selectedShape;
-
     function initMap() {
-      // 初始化地图，定位到费城
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 39.9526, lng: -75.1652 }, // Philadelphia coordinates
+      // 初始化地图，定位到指定的经纬度
+      const center = { lat: 39.9526, lng: -75.1652 }; // Philadelphia coordinates
+      const map = new google.maps.Map(document.getElementById("map"), {
+        center: center,
         zoom: 12,
       });
 
-      // 启用绘图工具，允许用户在地图上绘制多边形
-      drawingManager = new google.maps.drawing.DrawingManager({
-        drawingMode: google.maps.drawing.OverlayType.POLYGON,
-        drawingControl: true,
-        drawingControlOptions: {
-          position: google.maps.ControlPosition.TOP_CENTER,
-          drawingModes: [google.maps.drawing.OverlayType.POLYGON],
-        },
-        polygonOptions: {
-          editable: true,
-          draggable: true,
-        },
-      });
-      
-      drawingManager.setMap(map);
-
-      // 当用户绘制多边形时，执行搜索功能
-      google.maps.event.addListener(drawingManager, 'overlaycomplete', function(event) {
-        if (selectedShape) {
-          selectedShape.setMap(null); // 移除之前绘制的多边形
-        }
-        selectedShape = event.overlay;
-        
-        // 输出多边形的所有边界点
-        console.log("多边形边界坐标：", selectedShape.getPath().getArray());
-        
-        searchForAddresses(selectedShape); // 执行搜索
-      });
+      // 搜索指定范围内包含 "508" 的地址
+      searchForAddresses(map, center, 10000); // 半径设为10公里（10000米）
     }
 
-    // 搜索指定多边形区域内的地址
-    function searchForAddresses(polygon) {
-      const geocoder = new google.maps.Geocoder();
-      
-      // 获取多边形的边界
-      const bounds = new google.maps.LatLngBounds();
-      polygon.getPath().forEach(function(latLng) {
-        bounds.extend(latLng); // 将所有边界点加入边界中
-      });
-      
-      // 从边界中获取中心点
-      const center = bounds.getCenter();
-
-      // 设置搜索半径（这里以20公里为例）
-      const searchRadius = 20000;
-
-      // 使用 PlacesService 来搜索附近的地址
+    function searchForAddresses(map, center, radius) {
       const service = new google.maps.places.PlacesService(map);
 
+      // 使用 Places API 搜索
       service.textSearch({
-        query: '508', // 搜索关键字，查找包含门牌号“508”的地址
+        query: '508', // 搜索关键字
         location: center,
-        radius: searchRadius // 搜索的范围
+        radius: radius // 搜索半径，单位为米
       }, function(results, status) {
         if (status === google.maps.places.PlacesServiceStatus.OK) {
-          // 输出所有搜索结果
-          console.log("搜索结果：", results);
+          console.log("搜索结果：", results); // 输出所有搜索结果
 
           results.forEach(function(result) {
-            // 获取地址的坐标
-            const placeLocation = result.geometry.location;
-
-            // 检查地址是否在多边形范围内
-            if (google.maps.geometry.poly.containsLocation(placeLocation, polygon)) {
-              // 地址在多边形内且包含508，输出地址并在地图上标记
-              console.log("符合条件的地址: " + result.formatted_address);
-              new google.maps.Marker({
-                map: map,
-                position: placeLocation,
-                title: result.formatted_address,
-              });
-            }
+            // 在地图上标记每个符合条件的地址
+            new google.maps.Marker({
+              map: map,
+              position: result.geometry.location,
+              title: result.formatted_address,
+            });
           });
         } else {
           console.error("搜索失败，状态: " + status);
