@@ -5,7 +5,6 @@
     <meta name="viewport" content="initial-scale=1.0">
     <meta charset="utf-8">
     <style>
-      /* Basic styling for the map and controls */
       #map {
         height: 100%;
       }
@@ -15,98 +14,107 @@
         padding: 0;
       }
     </style>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2tvVGkebMUiea22jYfvzuNSWYwldVC8E&libraries=places&v=weekly"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2tvVGkebMUiea22jYfvzuNSWYwldVC8E&libraries=drawing,geometry&v=weekly"></script>
     <script>
       let map;
-      let polygon;
       let geocoder;
       let infoWindow;
+      let polygon;
 
       function initMap() {
         // Initialize the map
         map = new google.maps.Map(document.getElementById("map"), {
-          center: { lat: 40.012757, lng: -75.242300 }, // Default location
+          center: { lat: 40.7128, lng: -74.0060 }, // Default to New York
           zoom: 13,
         });
 
         geocoder = new google.maps.Geocoder();
         infoWindow = new google.maps.InfoWindow();
 
-        // Define the LatLng coordinates for the polygon's path.
-        const polygonCoords = [
-          { lat: 40.735, lng: -74.02 },
-          { lat: 40.74, lng: -73.99 },
-          { lat: 40.73, lng: -73.95 },
-          { lat: 40.71, lng: -73.97 },
-          { lat: 40.72, lng: -74.02 },
-        ];
-
-        // Create a polygon and set its editable property to true.
-        polygon = new google.maps.Polygon({
-          paths: polygonCoords,
-          strokeColor: "#FF0000",
-          strokeOpacity: 0.8,
-          strokeWeight: 2,
-          fillColor: "#FF0000",
-          fillOpacity: 0.35,
-          editable: true,
-          draggable: true,
+        // Add a drawing manager for custom polygons
+        const drawingManager = new google.maps.drawing.DrawingManager({
+          drawingMode: google.maps.drawing.OverlayType.POLYGON,
+          drawingControl: true,
+          drawingControlOptions: {
+            position: google.maps.ControlPosition.TOP_CENTER,
+            drawingModes: [google.maps.drawing.OverlayType.POLYGON],
+          },
+          polygonOptions: {
+            fillColor: "#FF0000",
+            fillOpacity: 0.35,
+            strokeWeight: 2,
+            strokeColor: "#FF0000",
+            editable: true,
+            draggable: true,
+          },
         });
-        polygon.setMap(map);
+        drawingManager.setMap(map);
 
-        // Add listener to search within polygon
-        google.maps.event.addListener(polygon, "mouseup", () => {
-          searchInPolygon();
+        // Add listener when the polygon is complete
+        google.maps.event.addListener(drawingManager, "overlaycomplete", (event) => {
+          if (event.type === google.maps.drawing.OverlayType.POLYGON) {
+            // Remove the old polygon if it exists
+            if (polygon) {
+              polygon.setMap(null);
+            }
+            polygon = event.overlay;
+
+            // Perform search for addresses inside polygon
+            searchInPolygon();
+          }
         });
-
-        // Search on initialization as well
-        searchInPolygon();
       }
 
       function searchInPolygon() {
-        const bounds = new google.maps.LatLngBounds();
-        const paths = polygon.getPath();
+        if (!polygon) return;
 
-        // Iterate over the polygon vertices and extend the bounds
+        const paths = polygon.getPath();
+        const bounds = new google.maps.LatLngBounds();
+
+        // Extend bounds to cover polygon area
         paths.forEach((path) => {
           bounds.extend(path);
         });
 
-        // Set up the request for the Places API
+        // Define parameters for Geocoding API request (using bounds as limit)
         const request = {
           bounds: bounds,
-          type: ['address'],
         };
 
-        // Perform the search using PlacesService
-        const service = new google.maps.places.PlacesService(map);
-        service.nearbySearch(request, (results, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK) {
-            for (let i = 0; i < results.length; i++) {
-              const place = results[i];
-              checkAddress(place);
-            }
+        // Reverse Geocode the area inside the polygon bounds
+        geocodePolygon(bounds);
+      }
+
+      function geocodePolygon(bounds) {
+        // Use Geocoding API to get addresses inside bounds
+        const ne = bounds.getNorthEast();
+        const sw = bounds.getSouthWest();
+
+        // Create the bounding box from the polygon
+        const latLngBounds = {
+          northeast: { lat: ne.lat(), lng: ne.lng() },
+          southwest: { lat: sw.lat(), lng: sw.lng() },
+        };
+
+        // Use the geocode function to get addresses within bounds
+        geocoder.geocode({ location: latLngBounds.northeast }, (results, status) => {
+          if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
+            results.forEach((result) => {
+              const addressComponents = result.address_components;
+              const streetNumber = addressComponents.find((component) =>
+                component.types.includes("street_number")
+              );
+
+              if (streetNumber && streetNumber.long_name === "508") {
+                addMarker(result.geometry.location, result.formatted_address);
+              }
+            });
+          } else {
+            console.error("Geocoding failed: " + status);
           }
         });
       }
 
-      // Function to check the street number using Geocoding API
-      function checkAddress(place) {
-        geocoder.geocode({ placeId: place.place_id }, (results, status) => {
-          if (status === google.maps.GeocodingStatus.OK && results[0]) {
-            const addressComponents = results[0].address_components;
-            const streetNumber = addressComponents.find((component) =>
-              component.types.includes("street_number")
-            );
-
-            if (streetNumber && streetNumber.long_name === "508") {
-              addMarker(results[0].geometry.location, results[0].formatted_address);
-            }
-          }
-        });
-      }
-
-      // Function to add a red marker to the map
       function addMarker(location, address) {
         const marker = new google.maps.Marker({
           position: location,
@@ -127,7 +135,6 @@
     <div id="map"></div>
 
     <script>
-      // Initialize map after the page loads
       window.onload = initMap;
     </script>
   </body>
