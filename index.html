@@ -1,15 +1,67 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>Simple Marker</title>
-    <!-- The callback parameter is required, so we use console.debug as a noop -->
-    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2tvVGkebMUiea22jYfvzuNSWYwldVC8E&callback=console.debug&libraries=maps,marker&v=beta">
+<head>
+    <title>Google Maps API Example</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2tvVGkebMUiea22jYfvzuNSWYwldVC8E"></script>
+    <script>
+        function initMap() {
+            // 中心位置的经纬度
+            const centerLatLng = { lat: 39.9526, lng: -75.1652 };
+
+            // 创建地图
+            const map = new google.maps.Map(document.getElementById("map"), {
+                center: centerLatLng,
+                zoom: 14,
+            });
+
+            // 在中心位置添加黄色标记
+            new google.maps.Marker({
+                position: centerLatLng,
+                map: map,
+                title: "中心位置",
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 10,
+                    fillColor: "yellow",
+                    fillOpacity: 1,
+                    strokeColor: "yellow",
+                    strokeOpacity: 1,
+                },
+            });
+
+            // 搜索5公里内的地址
+            const service = new google.maps.places.PlacesService(map);
+            const request = {
+                location: centerLatLng,
+                radius: '5000', // 5公里
+                query: '508'
+            };
+
+            service.textSearch(request, (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    results.forEach(place => {
+                        new google.maps.Marker({
+                            position: place.geometry.location,
+                            map: map,
+                            title: place.name,
+                            icon: {
+                                path: google.maps.SymbolPath.CIRCLE,
+                                scale: 10,
+                                fillColor: "red",
+                                fillOpacity: 1,
+                                strokeColor: "red",
+                                strokeOpacity: 1,
+                            },
+                        });
+                    });
+                } else {
+                    console.error('搜索失败:', status);
+                }
+            });
+        }
     </script>
-    <link rel="stylesheet" href="./style.css"/>
-  </head>
-  <body>
-    <gmp-map center="40.01311492919922,-75.2393798828125" zoom="14" map-id="DEMO_MAP_ID">
-      <gmp-advanced-marker position="40.01311492919922,-75.2393798828125" title="My location"></gmp-advanced-marker>
-    </gmp-map>
-  </body>
+</head>
+<body onload="initMap()">
+    <div id="map" style="height: 100vh; width: 100%;"></div>
+</body>
 </html>
