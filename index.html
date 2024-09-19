@@ -43,43 +43,55 @@
     }
 
     function searchForAddresses(polygon) {
-      const bounds = new google.maps.LatLngBounds();
-      polygon.getPath().forEach(function(latLng) {
-        bounds.extend(latLng);
-      });
+    const geocoder = new google.maps.Geocoder();
+    
+    // 获取多边形的边界
+    const bounds = new google.maps.LatLngBounds();
+    polygon.getPath().forEach(function(latLng) {
+        bounds.extend(latLng); // 将所有边界点加入边界中
+    });
+    
+    // 从边界中获取中心点
+    const center = bounds.getCenter();
 
-      // 使用 Geocoding API 搜索边界内的地址
-      const geocoder = new google.maps.Geocoder();
-      
-      // 获取多边形范围的中心点
-      const center = bounds.getCenter();
+    // 设置搜索半径，这里以2公里为例
+    const searchRadius = 2000;
+    
+    // 定义搜索请求，使用Geocoding API来反向编码
+    const request = {
+        location: center,
+        radius: searchRadius
+    };
+    
+    // 使用 PlacesService 来搜索附近的地址
+    const service = new google.maps.places.PlacesService(map);
 
-      // 设置请求参数
-      const request = {
-        location: center, 
-        radius: '5000', // 半径范围，单位为米
-        query: '508', // 搜索包含508的地址
-      };
-
-      // 调用 Places API 或 Geocoding API
-      const service = new google.maps.places.PlacesService(map);
-      service.textSearch(request, function(results, status) {
+    service.textSearch({
+        query: '508', // 搜索关键字，查找包含门牌号“508”的地址
+        location: center,
+        radius: searchRadius // 搜索的范围
+    }, function(results, status) {
         if (status === google.maps.places.PlacesServiceStatus.OK) {
-          results.forEach(function(place) {
-            if (place.formatted_address.includes('508')) {
-              console.log(place.formatted_address); // 输出地址
-              new google.maps.Marker({
-                map: map,
-                position: place.geometry.location,
-                title: place.formatted_address,
-              });
-            }
-          });
+            results.forEach(function(result) {
+                // 获取地址的坐标
+                const placeLocation = result.geometry.location;
+
+                // 检查地址是否在多边形范围内
+                if (google.maps.geometry.poly.containsLocation(placeLocation, polygon)) {
+                    // 地址在多边形内且包含508，输出地址并在地图上标记
+                    console.log("符合条件的地址: " + result.formatted_address);
+                    new google.maps.Marker({
+                        map: map,
+                        position: placeLocation,
+                        title: result.formatted_address,
+                    });
+                }
+            });
         } else {
-          console.error("Place search failed due to: " + status);
+            console.error("搜索失败，状态: " + status);
         }
-      });
-    }
+    });
+  }
   </script>
 </head>
 <body>
