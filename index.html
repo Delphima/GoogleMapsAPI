@@ -1,67 +1,134 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>Google Maps API Example</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2tvVGkebMUiea22jYfvzuNSWYwldVC8E"></script>
+  <head>
+    <title>Custom Polygon Search with Google Maps</title>
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+    <style>
+      /* Basic styling for the map and controls */
+      #map {
+        height: 100%;
+      }
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&v=weekly"></script>
     <script>
-        function initMap() {
-            // 中心位置的经纬度 40.012757, -75.242300
-            const centerLatLng = { lat: 40.012757, lng: -75.242300 };
+      let map;
+      let polygon;
+      let geocoder;
+      let infoWindow;
 
-            // 创建地图
-            const map = new google.maps.Map(document.getElementById("map"), {
-                center: centerLatLng,
-                zoom: 14,
-            });
+      function initMap() {
+        // Initialize the map
+        map = new google.maps.Map(document.getElementById("map"), {
+          center: { lat: 40.012757, lng: -75.242300 }, // Default location
+          zoom: 13,
+        });
 
-            // 在中心位置添加黄色标记
-            new google.maps.Marker({
-                position: centerLatLng,
-                map: map,
-                title: "中心位置",
-                icon: {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: 10,
-                    fillColor: "yellow",
-                    fillOpacity: 1,
-                    strokeColor: "yellow",
-                    strokeOpacity: 1,
-                },
-            });
+        geocoder = new google.maps.Geocoder();
+        infoWindow = new google.maps.InfoWindow();
 
-            // 搜索5公里内的地址
-            const service = new google.maps.places.PlacesService(map);
-            const request = {
-                location: centerLatLng,
-                radius: '5000', // 5公里
-                query: 'Cynwyd'
-            };
+        // Define the LatLng coordinates for the polygon's path.
+        const polygonCoords = [
+          { lat: 40.735, lng: -74.02 },
+          { lat: 40.74, lng: -73.99 },
+          { lat: 40.73, lng: -73.95 },
+          { lat: 40.71, lng: -73.97 },
+          { lat: 40.72, lng: -74.02 },
+        ];
 
-            service.textSearch(request, (results, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK) {
-                    results.forEach(place => {
-                        new google.maps.Marker({
-                            position: place.geometry.location,
-                            map: map,
-                            title: place.name,
-                            icon: {
-                                path: google.maps.SymbolPath.CIRCLE,
-                                scale: 10,
-                                fillColor: "red",
-                                fillOpacity: 1,
-                                strokeColor: "red",
-                                strokeOpacity: 1,
-                            },
-                        });
-                    });
-                } else {
-                    console.error('搜索失败:', status);
-                }
-            });
-        }
+        // Create a polygon and set its editable property to true.
+        polygon = new google.maps.Polygon({
+          paths: polygonCoords,
+          strokeColor: "#FF0000",
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: "#FF0000",
+          fillOpacity: 0.35,
+          editable: true,
+          draggable: true,
+        });
+        polygon.setMap(map);
+
+        // Add listener to search within polygon
+        google.maps.event.addListener(polygon, "mouseup", () => {
+          searchInPolygon();
+        });
+
+        // Search on initialization as well
+        searchInPolygon();
+      }
+
+      function searchInPolygon() {
+        const bounds = new google.maps.LatLngBounds();
+        const paths = polygon.getPath();
+
+        // Iterate over the polygon vertices and extend the bounds
+        paths.forEach((path) => {
+          bounds.extend(path);
+        });
+
+        // Set up the request for the Places API
+        const request = {
+          bounds: bounds,
+          type: ['address'],
+        };
+
+        // Perform the search using PlacesService
+        const service = new google.maps.places.PlacesService(map);
+        service.nearbySearch(request, (results, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK) {
+            for (let i = 0; i < results.length; i++) {
+              const place = results[i];
+              checkAddress(place);
+            }
+          }
+        });
+      }
+
+      // Function to check the street number using Geocoding API
+      function checkAddress(place) {
+        geocoder.geocode({ placeId: place.place_id }, (results, status) => {
+          if (status === google.maps.GeocodingStatus.OK && results[0]) {
+            const addressComponents = results[0].address_components;
+            const streetNumber = addressComponents.find((component) =>
+              component.types.includes("street_number")
+            );
+
+            if (streetNumber && streetNumber.long_name === "508") {
+              addMarker(results[0].geometry.location, results[0].formatted_address);
+            }
+          }
+        });
+      }
+
+      // Function to add a red marker to the map
+      function addMarker(location, address) {
+        const marker = new google.maps.Marker({
+          position: location,
+          map: map,
+          icon: {
+            url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
+          },
+        });
+
+        google.maps.event.addListener(marker, "click", () => {
+          infoWindow.setContent(`<strong>Address:</strong> ${address}`);
+          infoWindow.open(map, marker);
+        });
+      }
     </script>
-</head>
-<body onload="initMap()">
-    <div id="map" style="height: 100vh; width: 100%;"></div>
-</body>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <script>
+      // Initialize map after the page loads
+      window.onload = initMap;
+    </script>
+  </body>
 </html>
