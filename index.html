@@ -1,1 +1,92 @@
-<h1>Hello!</h1>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Search for Address Number 508</title>
+  <!-- 引入 Google Maps API 并插入 API 密钥 -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC2tvVGkebMUiea22jYfvzuNSWYwldVC8E&libraries=drawing,places"></script>
+  <script>
+    let map;
+    let drawingManager;
+    let selectedShape;
+
+    function initMap() {
+      // 初始化地图，定位到费城
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 39.9526, lng: -75.1652 }, // Philadelphia coordinates
+        zoom: 12,
+      });
+
+      // 启用绘图工具，允许用户在地图上绘制多边形
+      drawingManager = new google.maps.drawing.DrawingManager({
+        drawingMode: google.maps.drawing.OverlayType.POLYGON,
+        drawingControl: true,
+        drawingControlOptions: {
+          position: google.maps.ControlPosition.TOP_CENTER,
+          drawingModes: [google.maps.drawing.OverlayType.POLYGON],
+        },
+        polygonOptions: {
+          editable: true,
+          draggable: true,
+        },
+      });
+      
+      drawingManager.setMap(map);
+
+      // 当用户绘制多边形时，执行搜索功能
+      google.maps.event.addListener(drawingManager, 'overlaycomplete', function(event) {
+        if (selectedShape) {
+          selectedShape.setMap(null);
+        }
+        selectedShape = event.overlay;
+        searchForAddresses(selectedShape); // 执行搜索
+      });
+    }
+
+    function searchForAddresses(polygon) {
+      const bounds = new google.maps.LatLngBounds();
+      polygon.getPath().forEach(function(latLng) {
+        bounds.extend(latLng);
+      });
+
+      // 使用 Geocoding API 搜索边界内的地址
+      const geocoder = new google.maps.Geocoder();
+      
+      // 获取多边形范围的中心点
+      const center = bounds.getCenter();
+
+      // 设置请求参数
+      const request = {
+        location: center, 
+        radius: '5000', // 半径范围，单位为米
+        query: '508', // 搜索包含508的地址
+      };
+
+      // 调用 Places API 或 Geocoding API
+      const service = new google.maps.places.PlacesService(map);
+      service.textSearch(request, function(results, status) {
+        if (status === google.maps.places.PlacesServiceStatus.OK) {
+          results.forEach(function(place) {
+            if (place.formatted_address.includes('508')) {
+              console.log(place.formatted_address); // 输出地址
+              new google.maps.Marker({
+                map: map,
+                position: place.geometry.location,
+                title: place.formatted_address,
+              });
+            }
+          });
+        } else {
+          console.error("Place search failed due to: " + status);
+        }
+      });
+    }
+  </script>
+</head>
+<body>
+  <!-- 地图容器 -->
+  <div id="map" style="height: 500px; width: 100%;"></div>
+  <script>
+    window.onload = initMap;
+  </script>
+</body>
+</html>
